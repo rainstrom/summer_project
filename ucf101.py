@@ -2,6 +2,8 @@ import os
 from numpy import random
 import numpy as np
 import cv2
+import threading
+import Queue
 
 RGB_MEAN = np.array([104, 117, 123], np.float32)
 FLOW_MEAN = np.array([128.], np.float32)
@@ -149,7 +151,7 @@ def _read_video_segments(video_dir, video_length, num_segments, num_length, fram
 
 class reader:
     def __init__(self, root_dir, video_list_fn, batch_size, test=True,
-        num_segments=1, num_length=1, frame_type="RGB", full_test=False, full_test_segments=25):
+        num_segments=1, num_length=1, frame_type="RGB", full_test=False, full_test_segments=25, queue_num=2):
         video_list = []
         with open(video_list_fn) as f:
             lines = f.readlines()
@@ -171,14 +173,39 @@ class reader:
         if full_test:
             assert self.test_mode == True
         self.full_test_segments = full_test_segments
+        self.mutex = threading.Lock()
+        self.threads = [threading.Thread(target=self._queue_load) for i in range(queue_num)]
+        self.queue = Queue.Queue(maxsize = queue_num)
+        for t in self.threads:
+            t.setDaemon(True)
+            t.start()
+
+    def get(self):
+        return self.queue.get()
+
+    def _queue_load(self):
+        while(True):
+            data_labels = self.load()
+            self.queue.put(data_labels)
 
     def load(self):
         if self.full_test:
             return self._load_full_test()
+
+        # get ids
+        self.mutex.acquire()
+        ids = []
+        for i in range(self.batch_size):
+            ids.append(self.video_id)
+            self.video_id += 1
+            if self.video_id >= self.total_video_num:
+                self.video_id = 0
+        self.mutex.release()
+
         data = np.zeros([self.batch_size, 224, 224, (3 if self.frame_type=="RGB" else 2)], dtype=np.float32)
         labels = np.zeros(self.batch_size, dtype=np.int64)
-        for i in range(self.batch_size):
-            video_item = self.video_list[self.video_id]
+        for i, vid in enumerate(ids):
+            video_item = self.video_list[vid]
             video_dir = video_item[0]
             video_length = video_item[1]
             video_label = video_item[2]
@@ -187,9 +214,7 @@ class reader:
                     video_length, self.num_segments,
                     self.num_length, self.frame_type, self.test_mode)
             labels[i] = video_label
-            self.video_id += 1
-            if self.video_id >= self.total_video_num:
-                self.video_id = 0
+
         return data, labels
 
     def get_video_num(self):

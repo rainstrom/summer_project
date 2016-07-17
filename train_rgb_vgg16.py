@@ -3,8 +3,6 @@ import ucf101
 import tensorflow as tf
 import numpy as np
 from load_model import load_from_pickle
-# import Queue
-# import thread
 
 learning_rate = 0.01
 total_steps = 12000
@@ -21,7 +19,8 @@ test_iter = 10 # *100
 test_inteval = 500
 save_inteval = 4000
 showing_inteval = 20
-keep_prob_value = 0.8
+keep_prob_value_start = 0.8
+keep_prob_value_end = 0.2
 only_full_test = False
 full_test_segments = 25
 assert batch_size % full_test_segments == 0
@@ -44,15 +43,10 @@ lr = tf.train.exponential_decay(learning_rate,
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
 train_op = optimizer.minimize(loss, global_step=global_step)
 
-def reader_worker(reader, queue):
-    while True:
-        data_label = reader.load()
-        queue.put(data_label)
-    thread.exit_thread()
-
 saver = tf.train.Saver(tf.all_variables())
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)
 sess = tf.Session(config=tf.ConfigProto(
-        log_device_placement=True))
+        log_device_placement=True, gpu_options=gpu_options))
 sess.run(tf.initialize_all_variables())
 
 if only_full_test:
@@ -68,23 +62,24 @@ else:
 
 if not only_full_test:
     data_reader = ucf101.reader(root_dir, train_list, batch_size, False, 1, 1, "RGB")
-    queue = Queue.Queue(maxsize = 3)
-    thread.start_new_thread(reader_worker, (data_reader, queue))
-
     test_data_reader = ucf101.reader(root_dir, test_list, batch_size, True, 1, 1, "RGB")
-    test_queue = Queue.Queue(maxsize = 3)
-    thread.start_new_thread(reader_worker, (test_data_reader, test_queue))
 
+    keep_prob_value = 1.0
     for i in range(total_steps):
-        data, label = queue.get()
+        print("loading data")
+        data, label = data_reader.get()
         # data, label = data_reader.load()
+        print("running")
         (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, keep_prob: keep_prob_value})
-        print("[step %d]: loss, %f; acc, %f; lr, %f" % (step, loss_value, acc_value, lr_value))
+        progress = min(float(step) / float(total_steps) * 2, 1.0)
+        keep_prob_value = progress * keep_prob_value_end + (1 - progress) * keep_prob_value_start
+        print("[step %d]: loss, %f; acc, %f; lr, %f; keep, %f" % (step, loss_value, acc_value, lr_value, keep_prob_value))
         if step % test_inteval == 0 or step == 1:
+            print("testing ... ")
             all_acc = []
             all_loss = []
             for k in range(test_iter):
-                test_data, test_label = test_queue.get()
+                test_data, test_label = test_data_reader.get()
                 # test_data, test_label = test_data_reader.load()
                 (loss_value, acc_value) = sess.run([loss, accuracy], feed_dict={batch_data:test_data, batch_label:test_label, keep_prob: 1.0})
                 all_acc.append(acc_value)
@@ -93,6 +88,7 @@ if not only_full_test:
             print("test result: acc, %f; loss, %f" % (acc_value, loss_value))
 
         if step % save_inteval == 0 or step == 1:
+            print("Saving model")
             save_path = saver.save(sess, "./weights_rgb/rgb_vgg16_iter%d.ckpt" % (step))
             print("Model saved in file: %s" % save_path)
     print("trainning finished")
