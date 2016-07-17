@@ -29,7 +29,7 @@ def inference(input, keep_prob=1.0, train_conv123=True, train_conv45=True, train
     # output = softmax(output, name='prob'))
     return logits
 
-def loss(logits, labels, weight_decay=0.005):
+def loss(logits, labels, weight_decay=0.001):
     labels = tf.cast(labels, tf.int64)
     # cross_entropy_loss
     cross_entropy_per_example = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -37,11 +37,10 @@ def loss(logits, labels, weight_decay=0.005):
     cross_entropy_loss = tf.reduce_mean(cross_entropy_per_example, name='cross_entropy')
     tf.add_to_collection('losses', cross_entropy_loss)
     # l2 weight decay
-    # weights = tf.get_collection('weights')
-    # assert len(weights) > 0
-    # l2loss = tf.add_n([tf.nn.l2_loss(weight) for weight in weights], name='l2loss')
-    # return cross_entropy_loss + weight_decay * l2loss
-    return cross_entropy_loss
+    weights = tf.get_collection('weights')
+    assert len(weights) > 0
+    l2loss = tf.add_n([tf.nn.l2_loss(weight) for weight in weights], name='l2loss')
+    return cross_entropy_loss, cross_entropy_loss + weight_decay * l2loss
 
 
 def accuracy(logits, labels):

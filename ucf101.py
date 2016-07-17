@@ -33,14 +33,8 @@ def _multi_scale_fix_crop(img, is_flow, fix_crop=True, max_distort=1):
         scale_ratios = [1.,0.875,0.75]
     else:
         scale_ratios = [1.,0.875,0.75,0.66]
-    select_ratio_h_id = random.randint(len(scale_ratios))
-    select_ratio_w_id = random.randint(3) - 1 + select_ratio_h_id
-    if select_ratio_w_id >= len(scale_ratios):
-        select_ratio_w_id = len(scale_ratios) - 1
-    elif select_ratio_w_id <= 0:
-        select_ratio_w_id = 0
-    ratio_h = scale_ratios[select_ratio_h_id]
-    ratio_w = scale_ratios[select_ratio_w_id]
+    select_ratio_id = random.randint(len(scale_ratios))
+    ratio_h = ratio_w = scale_ratios[select_ratio_id]
     img = cv2.resize(img, None, fx=1./ratio_h, fy=1./ratio_w, interpolation = cv2.INTER_AREA)
 
     # nine position
