@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 from load_model import load_from_pickle
 
-learning_rate = 0.01
+learning_rate = 0.001
 total_steps = 12000
 decay_steps = 4000
 decay_factor = 0.1
@@ -70,7 +70,7 @@ if not only_full_test:
         data, label = data_reader.get()
         print("running")
         (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, keep_prob: keep_prob_value})
-        progress = min(float(step) / float(total_steps) * 2, 1.0)
+        progress = min(float(step) / float(total_steps) * 3.0, 1.0)
         keep_prob_value = progress * keep_prob_value_end + (1 - progress) * keep_prob_value_start
         print("[step %d]: loss, %f; acc, %f; lr, %f; keep, %f" % (step, loss_value, acc_value, lr_value, keep_prob_value))
         if step % test_inteval == 0: # or step == 1:

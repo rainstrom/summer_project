@@ -4,9 +4,9 @@ import tensorflow as tf
 import numpy as np
 from load_model import load_from_pickle
 
-learning_rate = 0.001
-total_steps = 12000
-decay_steps = 4000
+learning_rate = 0.0001
+total_steps = 4000
+decay_steps = 2000
 decay_factor = 0.1
 momentum = 0.9
 batch_size = 100 # TODO: 100
@@ -16,10 +16,10 @@ root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 test_iter = 10 # *100
-test_inteval = 500
-save_inteval = 4000
+test_inteval = 200
+save_inteval = 2000
 showing_inteval = 20
-keep_prob_value_start = 0.5
+keep_prob_value_start = 0.2
 keep_prob_value_end = 0.2
 only_full_test = False
 full_test_segments = 25
@@ -31,7 +31,7 @@ batch_label = tf.placeholder(tf.int64, shape=[batch_size], name="label")
 keep_prob = tf.placeholder("float")
 global_step = tf.Variable(0, name='global_step', trainable=False)
 
-softmax_digits = vgg16.inference(batch_data, keep_prob=keep_prob, train_conv123=False, train_conv45=False, train_fc67=True)
+softmax_digits = vgg16.inference(batch_data, keep_prob=keep_prob, train_conv123=False, train_conv45=True, train_fc67=True)
 cross_entropy_loss, total_loss = vgg16.loss(softmax_digits, batch_label)
 accuracy = vgg16.accuracy(softmax_digits, batch_label)
 
@@ -49,16 +49,12 @@ sess = tf.Session(config=tf.ConfigProto(
         log_device_placement=True, gpu_options=gpu_options))
 sess.run(tf.initialize_all_variables())
 
-if only_full_test:
-    ckpt = tf.train.get_checkpoint_state("./weights_rgb/")
-    assert (ckpt and ckpt.model_checkpoint_path)
-    print("loading from cpkt")
-    saver.restore(sess, ckpt.model_checkpoint_path)
-    print("loaded from cpkt")
-else:
-    print("cannot find ckpt checkpoint, loading from tfmodel")
-    load_from_pickle("VGG_ILSVRC_16_layers.tfmodel", sess, ignore_missing=True)
-    print("loaded from tfmodel")
+ckpt = tf.train.get_checkpoint_state("./weights_rgb")
+assert (ckpt and ckpt.model_checkpoint_path)
+print("loading from cpkt")
+saver.restore(sess, ckpt.model_checkpoint_path)
+print("loaded from cpkt")
+sess.run(global_step.assign(0))
 
 if not only_full_test:
     data_reader = ucf101.reader(root_dir, train_list, batch_size, False, 1, 1, "RGB")
@@ -87,7 +83,7 @@ if not only_full_test:
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")
-            save_path = saver.save(sess, "./weights_rgb/rgb_vgg16_iter%d.ckpt" % (step))
+            save_path = saver.save(sess, "./weights_rgb_finetuneconv/rgb_vgg16_iter%d.ckpt" % (step))
             print("Model saved in file: %s" % save_path)
     print("trainning finished")
 
