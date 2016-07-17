@@ -8,6 +8,7 @@ def make_var(name, shape, initializer=tf.random_normal_initializer(stddev=0.01),
         regularizer=regularizer,
         trainable=trainable)
     tf.add_to_collection(name, new_var)
+    tf.add_to_collection("params", new_var)
     return new_var
 
 def conv(input,

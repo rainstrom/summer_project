@@ -29,7 +29,7 @@ def inference(input, keep_prob=1.0, train_conv123=True, train_conv45=True, train
     # output = softmax(output, name='prob'))
     return logits
 
-def loss(logits, labels, weight_decay=0.001):
+def loss(logits, labels, weight_decay=0.0005):
     labels = tf.cast(labels, tf.int64)
     # cross_entropy_loss
     cross_entropy_per_example = tf.nn.sparse_softmax_cross_entropy_with_logits(
