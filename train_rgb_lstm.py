@@ -21,7 +21,7 @@ test_inteval = 1000; test_iter = 125
 save_inteval = 3000
 showing_inteval = 20
 cnn_keep_prob_value = 1.0
-lstm_keep_prob_value = 0.5
+lstm_keep_prob_value = 0.2
 
 run_training = True
 run_full_test = True
