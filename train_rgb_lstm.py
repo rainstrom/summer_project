@@ -58,9 +58,10 @@ else:
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
     #conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
     #conv_saver.restore(sess, ckpt.model_checkpoint_path)
-    saver1 = tf.train.Saver(tf.get_collection("params"))
-    saver1.restore(sess, ckpt.model_checkpoint_path)
-    sess.run(global_step.assign(3999))
+    #saver1 = tf.train.Saver(tf.get_collection("params"))
+    #saver1.restore(sess, ckpt.model_checkpoint_path)
+    #sess.run(global_step.assign(3999))
+    saver.restore(sess, ckpt.model_checkpoint_path)
     print("loaded from cpkt")
 
 start_step = sess.run(global_step)
@@ -74,7 +75,7 @@ def analysis_test_result(num_segments, test_iter, loss_values, acc_values, fc8_v
     for (fc8_value, test_label) in zip(fc8_values, label_values):
         for k in range(fc8_values[0].shape[0] / num_segments):
             fc8_value_1 = fc8_value[k*num_segments:(k+1)*num_segments, :]
-	    fc8_value_1 = np.mean(fc8_value_1, axis=0)
+            fc8_value_1 = np.mean(fc8_value_1, axis=0)
             fc8_value_f = fc8_value[(k+1)*num_segments-1, :]
             test_label_1 = test_label[k]
             final_pd_1 = np.argmax(fc8_value_1)
