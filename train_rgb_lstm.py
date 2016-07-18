@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 from load_model import load_from_pickle
 import math
+import signal
+import sys
 
 root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
@@ -15,7 +17,7 @@ total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 25; num_length = 1
 test_inteval = 1000; test_iter = 125
-save_inteval = 4000
+save_inteval = 3000
 showing_inteval = 20
 cnn_keep_prob_value = 1.0
 lstm_keep_prob_value = 0.5
@@ -56,12 +58,12 @@ else:
     ckpt = tf.train.get_checkpoint_state("./weights_rgb_lstm/")
     assert (ckpt and ckpt.model_checkpoint_path)
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
-    #conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
-    #conv_saver.restore(sess, ckpt.model_checkpoint_path)
+    conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
+    conv_saver.restore(sess, ckpt.model_checkpoint_path)
     #saver1 = tf.train.Saver(tf.get_collection("params"))
     #saver1.restore(sess, ckpt.model_checkpoint_path)
     #sess.run(global_step.assign(3999))
-    saver.restore(sess, ckpt.model_checkpoint_path)
+    #saver.restore(sess, ckpt.model_checkpoint_path)
     print("loaded from cpkt")
 
 start_step = sess.run(global_step)
@@ -115,7 +117,6 @@ if run_training:
                 all_labels.append(test_label)
                 print("testing iter %d" % (k))
             analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8, all_labels)
-
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")
             save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
