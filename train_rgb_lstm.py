@@ -28,9 +28,9 @@ batch_label = tf.placeholder(tf.int64, shape=[batch_size*num_segments], name="la
 lstm_keep_prob = tf.placeholder("float")
 global_step = tf.Variable(0, name='global_step', trainable=False)
 
-softmax_digits = vgg16.inference(batch_data, lstm_keep_prob, 1.0)
-cross_entropy_loss, total_loss = vgg16.loss(softmax_digits, batch_label)
-accuracy = vgg16.accuracy(softmax_digits, batch_label)
+softmax_digits = vgg16_lstm.inference(batch_data, batch_size, num_segments, lstm_keep_prob, 1.0)
+cross_entropy_loss, total_loss = vgg16_lstm.loss(softmax_digits, batch_label)
+accuracy = vgg16_lstm.accuracy(softmax_digits, batch_label)
 
 lr = tf.train.exponential_decay(learning_rate,
                               global_step,
