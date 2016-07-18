@@ -8,15 +8,15 @@ root_dir = '/scratch/xiaoyang/UCF101_opt_flows_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 
-learning_rate = 0.01
-batch_size = 100
+learning_rate = 0.005
+batch_size = 50
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 1; num_length = 5
 test_inteval = 500; test_iter = 10
 save_inteval = 3000
 showing_inteval = 20
-keep_prob_value = 0.2
+final_keep_prob_value = 0.2
 test_segments = 25
 assert batch_size % test_segments == 0
 
@@ -62,10 +62,13 @@ if run_training:
     data_reader = ucf101.reader(root_dir, train_list, "FLOW", batch_size, num_length, num_segments, False)
     test_data_reader = ucf101.reader(root_dir, test_list, "FLOW", batch_size, num_length, num_segments, True)
 
+    step = 0
     for i in range(total_steps):
         print("loading data")
         data, label = data_reader.get()
         print("running")
+        progress = float(step) / total_steps; progress = min(progress * 6, 1.0)
+        keep_prob_value = progress * final_keep_prob_value + (1 - progress) * 0.5
         (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, keep_prob: keep_prob_value})
         print("[step %d]: loss, %f; acc, %f; lr, %f; keep, %f" % (step, loss_value, acc_value, lr_value, keep_prob_value))
         if step % test_inteval == 0: # or step == 1:

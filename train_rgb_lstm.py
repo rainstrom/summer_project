@@ -8,7 +8,7 @@ root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 
-learning_rate = 0.01
+learning_rate = 0.001
 batch_size = 20 #
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
