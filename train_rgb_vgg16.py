@@ -20,7 +20,7 @@ keep_prob_value = 0.2
 test_segments = 25
 assert batch_size % test_segments == 0
 
-run_training = False
+run_training = True
 load_parameter_from_tfmodel = False
 run_full_test = True
 
@@ -78,11 +78,11 @@ if run_training:
                 all_acc.append(acc_value)
                 all_loss.append(loss_value)
                 print("test iter %d: acc, %f; loss, %f" % (k, acc_value, loss_value))
-            print("test result: acc, %f; loss, %f" % (acc_value, loss_value))
+            print("test result: acc, %f; loss, %f" % (np.mean(all_acc), np.mean(all_loss)))
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")
-            save_path = saver.save(sess, "./weights_rgb/rgb_vgg16_iter%d.ckpt" % (step))
+            save_path = saver.save(sess, "./weights_rgb_2/rgb_vgg16_iter%d.ckpt" % (step))
             print("Model saved in file: %s" % save_path)
         if step >= total_steps:
             break

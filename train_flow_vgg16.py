@@ -12,7 +12,7 @@ learning_rate = 0.01
 batch_size = 100
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
-num_segments = 1; num_length = 1
+num_segments = 1; num_length = 5
 test_inteval = 500; test_iter = 10
 save_inteval = 3000
 showing_inteval = 20
@@ -20,8 +20,8 @@ keep_prob_value = 0.2
 test_segments = 25
 assert batch_size % test_segments == 0
 
-run_training = False
-load_parameter_from_tfmodel = False
+run_training = True
+load_parameter_from_tfmodel = True
 run_full_test = True
 
 batch_data = tf.placeholder(tf.float32, shape=[batch_size, 224, 224, num_segments*num_length*2], name="data")
@@ -60,7 +60,7 @@ else:
 
 if run_training:
     data_reader = ucf101.reader(root_dir, train_list, "FLOW", batch_size, num_length, num_segments, False)
-    test_data_reader = ucf101.reader(root_dir, test_list, batch_size, num_length, num_segments, True)
+    test_data_reader = ucf101.reader(root_dir, test_list, "FLOW", batch_size, num_length, num_segments, True)
 
     for i in range(total_steps):
         print("loading data")
@@ -78,7 +78,7 @@ if run_training:
                 all_acc.append(acc_value)
                 all_loss.append(loss_value)
                 print("test iter %d: acc, %f; loss, %f" % (k, acc_value, loss_value))
-            print("test result: acc, %f; loss, %f" % (acc_value, loss_value))
+            print("test result: acc, %f; loss, %f" % (np.mean(all_acc), np.mean(all_loss)))
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")

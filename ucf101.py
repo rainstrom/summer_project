@@ -104,11 +104,10 @@ def _read_video_segments(video_dir, video_length, num_segments, num_length, fram
         for frame_id in frame_ids:
             img_x = cv2.imread(os.path.join(video_dir, '%04d_x.jpg'%frame_id), cv2.IMREAD_GRAYSCALE)
             assert isinstance(img_x, np.ndarray)
-            images.append(img_x)
             img_y = cv2.imread(os.path.join(video_dir, '%04d_x.jpg'%frame_id), cv2.IMREAD_GRAYSCALE)
             assert isinstance(img_y, np.ndarray)
-            images.append(img_y)
-    images = np.stack(images,axis=2)
+            images.append(np.stack((img_x, img_y), axis=2))
+    images = np.concatenate(images,axis=2)
     images = _transform(images, is_test, is_flow)
     return images
 
@@ -117,7 +116,7 @@ class reader:
             batch_size, num_length, num_segments,
             is_test,
             mode="NORMAL",
-            queue_num=2):
+            queue_num=1):
         # video list init
         video_list = []
         with open(video_list_fn) as f:
@@ -200,7 +199,7 @@ class reader:
                     self.num_length, self.frame_type, self.is_test)
             if self.mode == "NORMAL":
                 data[i, :, :, :] = video_block
-                label[i] = video_label
+                labels[i] = video_label
             else:
                 video_block = video_block.reshape((224, 224, self.num_segments, self.num_length*img_channel))
                 # to [num_segments, 224, 224, num_length*3/2]
