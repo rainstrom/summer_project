@@ -43,7 +43,7 @@ lr = tf.train.exponential_decay(learning_rate,
                               staircase=False)
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
 gvs = optimizer.compute_gradients(total_loss)
-capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+capped_gvs = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
 # train_op = optimizer.minimize(total_loss, global_step=global_step)
 
