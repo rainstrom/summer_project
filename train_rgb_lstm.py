@@ -8,8 +8,8 @@ root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 
-learning_rate = 0.001
-batch_size = 20 #
+learning_rate = 0.01
+batch_size = 4 #
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 25; num_length = 1
@@ -24,13 +24,13 @@ run_full_test = True
 load_parameter_from_tfmodel = False
 
 batch_data = tf.placeholder(tf.float32, shape=[batch_size*num_segments, 224, 224, num_length*3], name="data")
-batch_label = tf.placeholder(tf.int64, shape=[batch_size*num_segments], name="label")
+batch_label = tf.placeholder(tf.int64, shape=[batch_size], name="label")
 lstm_keep_prob = tf.placeholder("float")
 global_step = tf.Variable(0, name='global_step', trainable=False)
 
 softmax_digits = vgg16_lstm.inference(batch_data, batch_size, num_segments, lstm_keep_prob, 1.0)
-cross_entropy_loss, total_loss = vgg16_lstm.loss(softmax_digits, batch_label)
-accuracy = vgg16_lstm.accuracy(softmax_digits, batch_label)
+cross_entropy_loss, total_loss = vgg16_lstm.loss(softmax_digits, batch_label, num_segments)
+accuracy = vgg16_lstm.accuracy(softmax_digits, batch_label, num_segments)
 
 lr = tf.train.exponential_decay(learning_rate,
                               global_step,
@@ -38,12 +38,14 @@ lr = tf.train.exponential_decay(learning_rate,
                               decay_factor,
                               staircase=False)
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
-train_op = optimizer.minimize(total_loss, global_step=global_step)
+import pdb; pdb.set_trace()
+gvs = optimizer.compute_gradients(total_loss)
+capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
+#train_op = optimizer.minimize(total_loss, global_step=global_step)
 
 saver = tf.train.Saver(tf.get_collection("params"))
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
-sess = tf.Session(config=tf.ConfigProto(
-        log_device_placement=True, gpu_options=gpu_options))
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 sess.run(tf.initialize_all_variables())
 
 if load_parameter_from_tfmodel:
@@ -54,7 +56,9 @@ else:
     ckpt = tf.train.get_checkpoint_state("./weights_rgb/")
     assert (ckpt and ckpt.model_checkpoint_path)
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
-    saver.restore(sess, ckpt.model_checkpoint_path)
+    # import pdb; pdb.set_trace()
+    conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
+    conv_saver.restore(sess, ckpt.model_checkpoint_path)
     print("loaded from cpkt")
 
 if run_training:
@@ -65,15 +69,15 @@ if run_training:
         print("loading data")
         data, label = data_reader.get()
         print("running")
-        (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, keep_prob: keep_prob_value})
-        print("[step %d]: loss, %f; acc, %f; lr, %f; keep, %f" % (step, loss_value, acc_value, lr_value, keep_prob_value))
+        (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, lstm_keep_prob: lstm_keep_prob_value})
+        print("[step %d]: loss, %f; acc, %f; lr, %f; lstm_keep, %f" % (step, loss_value, acc_value, lr_value, lstm_keep_prob_value))
         if step % test_inteval == 0: # or step == 1:
             print("testing ... ")
             all_acc = []
             all_loss = []
             for k in range(test_iter):
                 test_data, test_label = test_data_reader.get()
-                (loss_value, acc_value) = sess.run([cross_entropy_loss, accuracy], feed_dict={batch_data:test_data, batch_label:test_label, keep_prob: 1.0})
+                (loss_value, acc_value) = sess.run([cross_entropy_loss, accuracy], feed_dict={batch_data:test_data, batch_label:test_label, lstm_keep_prob: 1.0})
                 all_acc.append(acc_value)
                 all_loss.append(loss_value)
                 print("test iter %d: acc, %f; loss, %f" % (k, acc_value, loss_value))
@@ -81,7 +85,7 @@ if run_training:
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")
-            save_path = saver.save(sess, "./weights_rgb_2/rgb_vgg16_iter%d.ckpt" % (step))
+            save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
             print("Model saved in file: %s" % save_path)
         if step >= total_steps:
             break
@@ -101,7 +105,7 @@ if run_full_test:
     for i in range(full_test_video_num // batch_size):
         step = i + 1
         test_data, test_label = full_test_data_reader.get()
-        (loss_value, acc_value, fc8_value) = sess.run([cross_entropy_loss, accuracy, softmax_digits], feed_dict={batch_data:test_data, batch_label:test_label, keep_prob: 1.0})
+        (loss_value, acc_value, fc8_value) = sess.run([cross_entropy_loss, accuracy, softmax_digits], feed_dict={batch_data:test_data, batch_label:test_label, lstm_keep_prob: 1.0})
         print("test iter %d: acc, %f; loss, %f" % (step, acc_value, loss_value))
         full_test_all_acc.append(acc_value)
         for k in range(batch_size):

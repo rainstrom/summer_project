@@ -48,7 +48,7 @@ def conv(input,
             output = tf.nn.bias_add(output, biases)
         if relu:
             # ReLU non-linearity
-            output = tf.nn.relu(output, name=scope.name)
+            output = tf.nn.relu(output, name=name)
         return output
 
 def relu(input, name):
@@ -96,9 +96,9 @@ def fc(input, num_out, name, relu=True, trainable=True):
         weights = make_var('weights', shape=[dim, num_out], trainable=trainable)
         biases = make_var('biases', [num_out], trainable=trainable)
         if relu:
-            return tf.nn.relu(tf.nn.xw_plus_b(feed_in, weights, biases), name=scope.name)
+            return tf.nn.relu(tf.nn.xw_plus_b(feed_in, weights, biases), name=name)
         else:
-            return tf.nn.xw_plus_b(feed_in, weights, biases, name=scope.name)
+            return tf.nn.xw_plus_b(feed_in, weights, biases, name=name)
 
 def softmax(input, name):
     input_shape = map(lambda v: v.value, input.get_shape())

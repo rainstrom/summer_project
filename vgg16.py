@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from layers import *
 
-def inference(input, keep_prob=1.0, train_conv123=True, train_conv45=True, train_fc67=True):
+def inference(input, keep_prob=1.0, train_conv123=True, train_conv45=True, train_fc67=True, train_fc8=True):
     output = conv(input, 3, 3, 64, 1, 1, name='conv1_1', trainable=train_conv123)
     output = conv(output, 3, 3, 64, 1, 1, name='conv1_2', trainable=train_conv123)
     output = max_pool(output, 2, 2, 2, 2, name='pool1')
@@ -25,7 +25,7 @@ def inference(input, keep_prob=1.0, train_conv123=True, train_conv45=True, train
     output = dropout(output, keep_prob, name='drop6')
     output = fc(output, 4096, name='fc7', trainable=train_fc67)
     output = dropout(output, keep_prob, name='drop7')
-    logits = fc(output, 101, relu=False, name='fc8_rgb')
+    logits = fc(output, 101, relu=False, name='fc8_rgb', trainable=train_fc8)
     # output = softmax(output, name='prob'))
     return logits
 

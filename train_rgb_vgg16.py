@@ -40,7 +40,7 @@ lr = tf.train.exponential_decay(learning_rate,
                               staircase=False)
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
 train_op = optimizer.minimize(total_loss, global_step=global_step)
-
+import pdb; pdb.set_trace()
 saver = tf.train.Saver(tf.get_collection("params"))
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
 sess = tf.Session(config=tf.ConfigProto(

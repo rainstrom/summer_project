@@ -91,7 +91,7 @@ def _read_video_segments(video_dir, video_length, num_segments, num_length, fram
     is_flow = True if frame_type == "FLOW" else False
     num_channel = 2 if frame_type == "FLOW" else 3
     frame_ids = _get_equal_length_segments_start_id(video_length, num_segments, num_length, is_test)
-
+    # print("reading {}, {}".format(video_dir, frame_ids))
     video_block = np.zeros([224, 224, num_segments*num_length*num_channel], dtype=np.float32)
     # read all images
     images = []
@@ -184,9 +184,12 @@ class reader:
         if self.mode=="NORMAL":
             data = np.zeros([self.batch_size, 224, 224, self.num_segments*self.num_length*img_channel], dtype=np.float32)
             labels = np.zeros(self.batch_size, dtype=np.int64)
-        else:
+        elif self.mode=="FULLTEST":
             data = np.zeros([self.batch_size*self.num_segments, 224, 224, self.num_length*img_channel], dtype=np.float32)
             labels = np.zeros(self.batch_size*self.num_segments, dtype=np.int64)
+        else:
+            data = np.zeros([self.batch_size*self.num_segments, 224, 224, self.num_length*img_channel], dtype=np.float32)
+            labels = np.zeros(self.batch_size, dtype=np.int64)
 
         for i, vid in enumerate(ids):
             video_item = self.video_list[vid]
@@ -205,5 +208,8 @@ class reader:
                 # to [num_segments, 224, 224, num_length*3/2]
                 video_block = np.transpose(video_block, (2, 0, 1, 3))
                 data[i*self.num_segments:(i+1)*self.num_segments, :, :, :] = video_block
-                labels[i*self.num_segments:(i+1)*self.num_segments] = video_label
+                if self.mode == "FULLTEST":
+                    labels[i*self.num_segments:(i+1)*self.num_segments] = video_label
+                else:
+                    labels[i] = video_label
         return data, labels
