@@ -1,3 +1,4 @@
+import tensorflow as tf
 def variable_summaries(var, name):
     """Attach a lot of summaries to a Tensor."""
     with tf.name_scope('summaries'):
