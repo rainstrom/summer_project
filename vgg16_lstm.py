@@ -4,7 +4,7 @@ from layers import *
 import vgg16
 from tf.models.
 
-def inference(input, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
+def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
     import pdb; pdb.set_trace()
     with tf.variable_scope("conv"):
         fc8 = vgg16.inference(input, conv_keep_prob, train_conv123, train_conv45, train_fc67)
@@ -26,7 +26,7 @@ def inference(input, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False
             if time_step > 0: tf.get_variable_scope().reuse_variables()
             (cell_output, state) = cell(inputs[:, time_step, :], state)
             outputs.append(cell_output)
-        
+
 
         final_state = state
     return logits
