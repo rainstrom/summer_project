@@ -116,7 +116,7 @@ class reader:
             batch_size, num_length, num_segments,
             is_test,
             mode="NORMAL",
-            queue_num=1):
+            queue_num=3):
         # video list init
         video_list = []
         with open(video_list_fn) as f:

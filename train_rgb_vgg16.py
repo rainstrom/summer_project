@@ -65,12 +65,13 @@ if run_training:
     for i in range(total_steps):
         print("loading data")
         data, label = data_reader.get()
+        # import pdb; pdb.set_trace()
         print("running")
         progress = float(step) / total_steps; progress = min(progress * 6, 1.0)
         keep_prob_value = progress * final_keep_prob_value + (1 - progress) * 0.5
         (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, keep_prob: keep_prob_value})
         print("[step %d]: loss, %f; acc, %f; lr, %f; keep, %f" % (step, loss_value, acc_value, lr_value, keep_prob_value))
-        if step % test_inteval == 0: # or step == 1:
+        if step % test_inteval == 0 or step == 1:
             print("testing ... ")
             all_acc = []
             all_loss = []
@@ -82,9 +83,9 @@ if run_training:
                 print("test iter %d: acc, %f; loss, %f" % (k, acc_value, loss_value))
             print("test result: acc, %f; loss, %f" % (np.mean(all_acc), np.mean(all_loss)))
 
-        if step % save_inteval == 0: #or step == 1:
+        if step % save_inteval == 0 or step == 1:
             print("Saving model")
-            save_path = saver.save(sess, "./weights_rgb_2/rgb_vgg16_iter%d.ckpt" % (step))
+            save_path = saver.save(sess, "./weights_rgb/rgb_vgg16_iter%d.ckpt" % (step))
             print("Model saved in file: %s" % save_path)
         if step >= total_steps:
             break
