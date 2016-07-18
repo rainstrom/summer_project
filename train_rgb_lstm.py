@@ -56,6 +56,7 @@ for grad, var in gvs:
     summary.variable_summaries(var, var.name + "_var")
 summary_writer = tf.train.SummaryWriter("summary_rgb_lstm", sess.graph)
 merged_summaries = tf.merge_all_summaries()
+do_summary = True
 
 if load_parameter_from_tfmodel:
     print("loading from tfmodel")
@@ -101,6 +102,13 @@ signal_act = False
 def signal_handler(signal, frame):
     global signal_act
     signal_act = True
+
+def choose_from(lst):
+    item = None
+    while item not in lst.keys():
+        item = raw_input('Would you like to do? {}: '.format(lst.keys()))
+    return lst[item]
+
 signal.signal(signal.SIGINT, signal_handler)
 
 if run_training:
@@ -131,17 +139,20 @@ if run_training:
             analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8, all_labels)
 
         if signal_act:
-            do_save = None
-            do_exit = None
-            while do_save not in ["yes", "no"]:
-                do_save = raw_input('Would you like to save model? yes or no: ')
-            if do_save == "yes":
-                print("Saving model")
-                save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
-                print("Model saved in file: %s" % save_path)
-            while do_exit not in ["yes", "no"]:
-                do_exit = raw_input('exit? yes or no: ')
-            if do_exit == "yes":
+            action = choose_from({"save": "save", "summary": "summary"})
+            print("choosing {}".format(action))
+            if action == "save":
+                do_save = choose_from({"yes": True, "no": False})
+                if do_save:
+                    print("Saving model")
+                    save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
+                    print("Model saved in file: %s" % save_path)
+            elif action == "summary":
+                do_summary = choose_from({"yes": True, "no": False})
+                print("done, do_summary: {}".format(do_summary))
+            print("exit ?")
+            do_exit = choose_from({"yes": True, "no": False})
+            if do_exit:
                 sys.exit(0)
             else:
                 signal_act = False
