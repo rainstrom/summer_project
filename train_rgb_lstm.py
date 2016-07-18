@@ -91,8 +91,8 @@ def analysis_test_result(num_segments, test_iter, loss_values, acc_values, fc8_v
 
 
 if run_training:
-    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=1)
-    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=1)
+    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=3)
+    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=3)
 
     for i in range(start_step, total_steps):
         print("loading data")
