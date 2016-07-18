@@ -11,24 +11,22 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
         fc6 = tf.get_default_graph().get_tensor_by_name("conv/fc6/conv/fc6:0")
         # output is [batch_size*num_segments, 4096]
     with tf.variable_scope("lstm"):
-        batch_size = 20
-        num_segments = 25
         hidden_size = 256
-        lstm_input = tf.reshape(fc7, [batch_size, num_segments, 4096])
+        lstm_inputs = tf.reshape(fc7, [batch_size, num_segments, 4096])
+
         lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_size, forget_bias=1.0)
         lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, output_keep_prob=lstm_keep_prob)
         cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * 2)
         _initial_state = cell.zero_state(batch_size, tf.float32)
 
         outputs = []
+        state = self._initial_state
         for time_step in range(num_segments):
             if time_step > 0: tf.get_variable_scope().reuse_variables()
-            (cell_output, state) = cell(inputs[:, time_step, :], state)
+            (cell_output, state) = cell(lstm_inputs[:, time_step, :], state)
             outputs.append(cell_output)
-
-
         final_state = state
-    return logits
+    return cell_output
 
 def loss(logits, labels, weight_decay=0.001):
     labels = tf.cast(labels, tf.int64)
