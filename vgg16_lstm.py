@@ -5,7 +5,6 @@ import vgg16
 import layers
 
 def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
-    # import pdb; pdb.set_trace()
     with tf.variable_scope("conv"):
         fc8 = vgg16.inference(input, conv_keep_prob, train_conv123, train_conv45, train_fc67, False)
         fc7 = tf.get_default_graph().get_tensor_by_name("conv/fc7/fc7:0")
@@ -41,7 +40,6 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
 def loss(logits, labels, num_segments, weight_decay=0.005):
     labels = tf.cast(labels, tf.int64)
     labels = tf.tile(labels, [num_segments])
-    import pdb; pdb.set_trace()
     # cross_entropy_loss
     cross_entropy_per_example = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits, labels, name='cross_entropy_per_example')
@@ -55,7 +53,6 @@ def loss(logits, labels, num_segments, weight_decay=0.005):
 
 
 def accuracy(logits, labels, num_segments):
-    # import pdb; pdb.set_trace()
     labels = tf.cast(labels, tf.int64)
     labels = tf.tile(labels, [num_segments])
     correct_prediction = tf.equal(tf.argmax(logits,1), labels)

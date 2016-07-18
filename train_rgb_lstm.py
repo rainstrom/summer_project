@@ -14,7 +14,7 @@ batch_size = 4 #
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 25; num_length = 1
-test_inteval = 200; test_iter = 10
+test_inteval = 1000; test_iter = 125
 save_inteval = 4000
 showing_inteval = 20
 cnn_keep_prob_value = 1.0
@@ -39,7 +39,6 @@ lr = tf.train.exponential_decay(learning_rate,
                               decay_factor,
                               staircase=False)
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
-import pdb; pdb.set_trace()
 gvs = optimizer.compute_gradients(total_loss)
 capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
@@ -54,47 +53,45 @@ if load_parameter_from_tfmodel:
     load_from_pickle("VGG_ILSVRC_16_layers.tfmodel", sess, ignore_missing=True)
     print("loaded from tfmodel")
 else:
-    ckpt = tf.train.get_checkpoint_state("./weights_rgb/")
+    ckpt = tf.train.get_checkpoint_state("./weights_rgb_lstm/")
     assert (ckpt and ckpt.model_checkpoint_path)
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
-    # import pdb; pdb.set_trace()
-    conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
-    conv_saver.restore(sess, ckpt.model_checkpoint_path)
+    #conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
+    #conv_saver.restore(sess, ckpt.model_checkpoint_path)
+    saver1 = tf.train.Saver(tf.get_collection("params"))
+    saver1.restore(sess, ckpt.model_checkpoint_path)
+    sess.run(global_step.assign(3999))
     print("loaded from cpkt")
 
 start_step = sess.run(global_step)
-import pdb; pdb.set_trace()
 
 def analysis_test_result(num_segments, test_iter, loss_values, acc_values, fc8_values, label_values):
     assert len(loss_values) == test_iter
     assert len(acc_values) == test_iter
-    total_video_num = float(fc8_values.shape[0]) / num_segments * test_iter
+    total_video_num = float(fc8_values[0].shape[0]) / num_segments * test_iter
     mean_acc_num = 0
     final_acc_num = 0
     for (fc8_value, test_label) in zip(fc8_values, label_values):
-        for k in range(fc8_values.shape[0] / num_segments):
+        for k in range(fc8_values[0].shape[0] / num_segments):
             fc8_value_1 = fc8_value[k*num_segments:(k+1)*num_segments, :]
+	    fc8_value_1 = np.mean(fc8_value_1, axis=0)
             fc8_value_f = fc8_value[(k+1)*num_segments-1, :]
-            test_label_1 = test_label[k*num_segments:(k+1)*num_segments]
-            assert all([test_label_1[0]==lb for lb in test_label_1])
-            test_label_1 = test_label_1[0]
-            test_label_f = test_label[(k+1)*num_segments-1]
-            fc8_value_1_mean = np.mean(fc8_value_1, axis=0)
-            final_pd_mean = np.argmax(fc8_value_1_mean)
+            test_label_1 = test_label[k]
+            final_pd_1 = np.argmax(fc8_value_1)
             final_pd_f = np.argmax(fc8_value_f)
-            if int(final_pd_mean) == int(test_label_1):
+            if int(final_pd_1) == int(test_label_1):
                 mean_acc_num += 1
-            if int(final_pd_f) == int(test_label_f):
+            if int(final_pd_f) == int(test_label_1):
                 final_acc_num += 1
 
-    print("avg frame acc is %f" % math.mean(acc_values))
-    print("mean %d frame acc is %f" % (num_segments, float(mean_acc_num) / float(total_video_num)))
+    print("mean frame acc is %f" % np.mean(acc_values))
+    print("%d->1 mean acc is %f" % (num_segments, float(mean_acc_num) / float(total_video_num)))
     print("final frame acc is %f" % (float(final_acc_num) / float(total_video_num)))
 
 
 if run_training:
-    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ")
-    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ")
+    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=1)
+    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=1)
 
     for i in range(start_step, total_steps):
         print("loading data")
@@ -107,14 +104,16 @@ if run_training:
             all_acc = []
             all_loss = []
             all_fc8 = []
+            all_labels = []
             for k in range(test_iter):
                 test_data, test_label = test_data_reader.get()
                 (loss_value, acc_value, fc8_value) = sess.run([cross_entropy_loss, accuracy, softmax_digits], feed_dict={batch_data:test_data, batch_label:test_label, lstm_keep_prob: 1.0})
                 all_acc.append(acc_value)
                 all_loss.append(loss_value)
                 all_fc8.append(fc8_value)
+                all_labels.append(test_label)
                 print("testing iter %d" % (k))
-            analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8)
+            analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8, all_labels)
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")
@@ -132,6 +131,7 @@ if run_full_test:
     all_acc = []
     all_loss = []
     all_fc8 = []
+    all_labels = []
     for i in range(full_test_video_num // batch_size):
         step = i + 1
         test_data, test_label = full_test_data_reader.get()
@@ -140,5 +140,6 @@ if run_full_test:
         all_acc.append(acc_value)
         all_loss.append(loss_value)
         all_fc8.append(fc8_value)
+        all_labels.append(test_label)
         if step % 10 == 0:
-            analysis_test_result(num_segments, step, all_loss, all_acc, all_fc8)
+            analysis_test_result(num_segments, step, all_loss, all_acc, all_fc8, all_labels)
