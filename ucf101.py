@@ -104,7 +104,7 @@ def _read_video_segments(video_dir, video_length, num_segments, num_length, fram
         for frame_id in frame_ids:
             img_x = cv2.imread(os.path.join(video_dir, '%04d_x.jpg'%frame_id), cv2.IMREAD_GRAYSCALE)
             assert isinstance(img_x, np.ndarray)
-            img_y = cv2.imread(os.path.join(video_dir, '%04d_x.jpg'%frame_id), cv2.IMREAD_GRAYSCALE)
+            img_y = cv2.imread(os.path.join(video_dir, '%04d_y.jpg'%frame_id), cv2.IMREAD_GRAYSCALE)
             assert isinstance(img_y, np.ndarray)
             images.append(np.stack((img_x, img_y), axis=2))
     images = np.concatenate(images,axis=2)
