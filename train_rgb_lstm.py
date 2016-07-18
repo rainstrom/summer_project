@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 from load_model import load_from_pickle
 import math
+import signal
+import sys
 
 root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
@@ -89,6 +91,11 @@ def analysis_test_result(num_segments, test_iter, loss_values, acc_values, fc8_v
     print("%d->1 mean acc is %f" % (num_segments, float(mean_acc_num) / float(total_video_num)))
     print("final frame acc is %f" % (float(final_acc_num) / float(total_video_num)))
 
+signal_act = False
+def signal_handler(signal, frame):
+    global signal_act
+    signal_act = True
+signal.signal(signal.SIGINT, signal_handler)
 
 if run_training:
     data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=1)
@@ -115,6 +122,22 @@ if run_training:
                 all_labels.append(test_label)
                 print("testing iter %d" % (k))
             analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8, all_labels)
+
+        if signal_act:
+            do_save = None
+            do_exit = None
+            while do_save not in ["yes", "no"]:
+                do_save = raw_input('Would you like to save model? yes or no: ')
+            if do_save == "yes":
+                print("Saving model")
+                save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
+                print("Model saved in file: %s" % save_path)
+            while do_exit not in ["yes", "no"]:
+                do_exit = raw_input('exit? yes or no: ')
+            if do_exit == "yes":
+                sys.exit(0)
+            else:
+                signal_act = False
 
         if step % save_inteval == 0: #or step == 1:
             print("Saving model")

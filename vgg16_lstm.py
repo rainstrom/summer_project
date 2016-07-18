@@ -5,6 +5,7 @@ import vgg16
 import layers
 
 def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
+    # input size is [batch_size * num_segments, 224, 224, num_length*3/2]
     with tf.variable_scope("conv"):
         fc8 = vgg16.inference(input, conv_keep_prob, train_conv123, train_conv45, train_fc67, False)
         fc7 = tf.get_default_graph().get_tensor_by_name("conv/fc7/fc7:0")
@@ -13,7 +14,7 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
     with tf.variable_scope("lstm"):
         hidden_size = 256
         lstm_inputs = tf.reshape(fc7, [batch_size, num_segments, 4096])
-        
+
         stacked_lstm_cell_num = 1
         lstm_cells = []
         for i in range(stacked_lstm_cell_num):
@@ -34,7 +35,7 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
         for var in lstm_params:
             tf.add_to_collection("params", var)
     logits = layers.fc(tf.concat(0, outputs, 'concat'), 101, relu=False, name='cls')
-    
+
     return logits
 
 def loss(logits, labels, num_segments, weight_decay=0.005):
