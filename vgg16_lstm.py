@@ -13,7 +13,8 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
         # output is [batch_size*num_segments, 4096]
     with tf.variable_scope("lstm"):
         hidden_size = 256
-        lstm_inputs = tf.reshape(fc7, [batch_size, num_segments, 4096])
+        fc7_dropout = dropout(output, lstm_keep_prob, name='dropout_input_lstm')
+        lstm_inputs = tf.reshape(fc7_dropout, [batch_size, num_segments, 4096])
 
         stacked_lstm_cell_num = 1
         lstm_cells = []
