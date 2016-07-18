@@ -51,6 +51,10 @@ saver = tf.train.Saver(tf.all_variables())
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 sess.run(tf.initialize_all_variables())
 
+tf.scalar_summary("cross_entropy_loss", cross_entropy_loss)
+tf.scalar_summary("total_loss", total_loss)
+tf.scalar_summary("learning_rate", lr)
+tf.scalar_summary("accuracy", accuracy)
 for grad, var in gvs:
     summary.variable_summaries(grad, var.name + "_grad")
     summary.variable_summaries(var, var.name + "_var")
@@ -120,7 +124,8 @@ if run_training:
         data, label = data_reader.get()
         print("running")
         (_, loss_value, acc_value, step, lr_value, summary) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr, merged_summaries], feed_dict={batch_data:data, batch_label:label, lstm_keep_prob: lstm_keep_prob_value})
-        summary_writer.add_summary(summary, step)
+        if do_summary:
+            summary_writer.add_summary(summary, step)
         print("[step %d]: loss, %f; acc, %f; lr, %f; lstm_keep, %f" % (step, loss_value, acc_value, lr_value, lstm_keep_prob_value))
         if step % test_inteval == 0: # or step == 1:
             print("testing ... ")
