@@ -6,6 +6,7 @@ from load_model import load_from_pickle
 import math
 import signal
 import sys
+import summary
 
 root_dir = '/scratch/xiaoyang/UCF101_frames_org2'
 train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_split1_avi.txt'
@@ -44,25 +45,31 @@ optimizer = tf.train.MomentumOptimizer(lr, momentum)
 gvs = optimizer.compute_gradients(total_loss)
 capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
-#train_op = optimizer.minimize(total_loss, global_step=global_step)
+# train_op = optimizer.minimize(total_loss, global_step=global_step)
 
 saver = tf.train.Saver(tf.all_variables())
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 sess.run(tf.initialize_all_variables())
+
+for grad, var in gvs:
+    summary.variable_summaries(grad, var.name + "_grad")
+    summary.variable_summaries(var, var.name + "_var")
+summary_writer = tf.train.SummaryWriter("summary_rgb_lstm", sess.graph)
+merged_summaries = tf.merge_all_summaries()
 
 if load_parameter_from_tfmodel:
     print("loading from tfmodel")
     load_from_pickle("VGG_ILSVRC_16_layers.tfmodel", sess, ignore_missing=True)
     print("loaded from tfmodel")
 else:
-    ckpt = tf.train.get_checkpoint_state("./weights_rgb/")
+    ckpt = tf.train.get_checkpoint_state("./weights_rgb_lstm/")
     assert (ckpt and ckpt.model_checkpoint_path)
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
-    conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
-    conv_saver.restore(sess, ckpt.model_checkpoint_path)
+    # conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
+    # conv_saver.restore(sess, ckpt.model_checkpoint_path)
     #saver1 = tf.train.Saver(tf.get_collection("params"))
     #saver1.restore(sess, ckpt.model_checkpoint_path)
-    #saver.restore(sess, ckpt.model_checkpoint_path)
+    saver.restore(sess, ckpt.model_checkpoint_path)
     print("loaded from cpkt")
 
 start_step = sess.run(global_step)
@@ -104,7 +111,8 @@ if run_training:
         print("loading data")
         data, label = data_reader.get()
         print("running")
-        (_, loss_value, acc_value, step, lr_value) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr], feed_dict={batch_data:data, batch_label:label, lstm_keep_prob: lstm_keep_prob_value})
+        (_, loss_value, acc_value, step, lr_value, summary) = sess.run([train_op, cross_entropy_loss, accuracy, global_step, lr, merged_summaries], feed_dict={batch_data:data, batch_label:label, lstm_keep_prob: lstm_keep_prob_value})
+        summary_writer.add_summary(summary, step)
         print("[step %d]: loss, %f; acc, %f; lr, %f; lstm_keep, %f" % (step, loss_value, acc_value, lr_value, lstm_keep_prob_value))
         if step % test_inteval == 0: # or step == 1:
             print("testing ... ")
