@@ -13,7 +13,7 @@ train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 
 learning_rate = 0.01
-batch_size = 4 #
+batch_size = 10 #
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 25; num_length = 1
@@ -21,7 +21,7 @@ test_inteval = 1000; test_iter = 125
 save_inteval = 3000
 showing_inteval = 20
 cnn_keep_prob_value = 1.0
-lstm_keep_prob_value = 0.2
+lstm_keep_prob_value = 0.4
 
 run_training = True
 run_full_test = True
@@ -43,7 +43,7 @@ lr = tf.train.exponential_decay(learning_rate,
                               staircase=False)
 optimizer = tf.train.MomentumOptimizer(lr, momentum)
 gvs = optimizer.compute_gradients(total_loss)
-capped_gvs = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in gvs]
+capped_gvs = [(tf.clip_by_norm(grad, 3.0), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
 # train_op = optimizer.minimize(total_loss, global_step=global_step)
 
@@ -144,14 +144,12 @@ if run_training:
             analysis_test_result(num_segments, test_iter, all_loss, all_acc, all_fc8, all_labels)
 
         if signal_act:
-            action = choose_from({"save": "save", "summary": "summary"})
+            action = choose_from({"save": "save", "summary": "summary", "exit":"exit"})
             print("choosing {}".format(action))
             if action == "save":
-                do_save = choose_from({"yes": True, "no": False})
-                if do_save:
-                    print("Saving model")
-                    save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
-                    print("Model saved in file: %s" % save_path)
+                print("Saving model")
+                save_path = saver.save(sess, "./weights_rgb_lstm/rgb_vgg16_iter%d.ckpt" % (step))
+                print("Model saved in file: %s" % save_path)
             elif action == "summary":
                 do_summary = choose_from({"yes": True, "no": False})
                 print("done, do_summary: {}".format(do_summary))
