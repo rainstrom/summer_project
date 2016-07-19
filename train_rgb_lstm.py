@@ -27,7 +27,7 @@ run_training = True
 run_full_test = True
 load_parameter_from_tfmodel = False
 
-batch_data = tf.placeholder(tf.float32, shape=[batch_size*num_segments, 224, 224, num_length*3], name="data")
+batch_data = tf.placeholder(tf.float32, shape=[num_segments, batch_size, 224, 224, num_length*3], name="data")
 batch_label = tf.placeholder(tf.int64, shape=[batch_size], name="label")
 lstm_keep_prob = tf.placeholder("float")
 global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -36,12 +36,14 @@ softmax_digits = vgg16_lstm.inference(batch_data, batch_size, num_segments, lstm
 cross_entropy_loss, total_loss = vgg16_lstm.loss(softmax_digits, batch_label, num_segments)
 accuracy = vgg16_lstm.accuracy(softmax_digits, batch_label, num_segments)
 
-lr = tf.train.exponential_decay(learning_rate,
-                              global_step,
-                              decay_steps,
-                              decay_factor,
-                              staircase=False)
-optimizer = tf.train.MomentumOptimizer(lr, momentum)
+lr = learning_rate
+# lr = tf.train.exponential_decay(learning_rate,
+#                               global_step,
+#                               decay_steps,
+#                               decay_factor,
+#                               staircase=False)
+# optimizer = tf.train.MomentumOptimizer(lr, momentum)
+optimizer = tf.train.AdamOptimizer(lr)
 gvs = optimizer.compute_gradients(total_loss)
 capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)

@@ -188,7 +188,7 @@ class reader:
             data = np.zeros([self.batch_size*self.num_segments, 224, 224, self.num_length*img_channel], dtype=np.float32)
             labels = np.zeros(self.batch_size*self.num_segments, dtype=np.int64)
         else:
-            data = np.zeros([self.batch_size*self.num_segments, 224, 224, self.num_length*img_channel], dtype=np.float32)
+            data = np.zeros([self.num_segments, self.batch_size, 224, 224, self.num_length*img_channel], dtype=np.float32)
             labels = np.zeros(self.batch_size, dtype=np.int64)
 
         for i, vid in enumerate(ids):
@@ -203,13 +203,17 @@ class reader:
             if self.mode == "NORMAL":
                 data[i, :, :, :] = video_block
                 labels[i] = video_label
-            else:
+            elif self.mode == "FULLTEST":
                 video_block = video_block.reshape((224, 224, self.num_segments, self.num_length*img_channel))
                 # to [num_segments, 224, 224, num_length*3/2]
                 video_block = np.transpose(video_block, (2, 0, 1, 3))
                 data[i*self.num_segments:(i+1)*self.num_segments, :, :, :] = video_block
-                if self.mode == "FULLTEST":
-                    labels[i*self.num_segments:(i+1)*self.num_segments] = video_label
-                else:
-                    labels[i] = video_label
+                labels[i*self.num_segments:(i+1)*self.num_segments] = video_label
+            else:
+                video_block = video_block.reshape((224, 224, self.num_segments, self.num_length*img_channel))
+                # video_block is [num_segments, 224, 224, num_length*3/2]
+                video_block = np.transpose(video_block, (2, 0, 1, 3))
+                # data is [self.num_segments, self.batch_size, 224, 224, self.num_length*img_channel]
+                data[:, i, :, :, :] = video_block
+                labels[i] = video_label
         return data, labels

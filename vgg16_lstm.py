@@ -5,17 +5,22 @@ import vgg16
 import layers
 
 def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
-    # input size is [batch_size * num_segments, 224, 224, num_length*3/2]
+    # input size is [num_segments, batch_size, 224, 224, num_length*3/2]
+    input_per_step = tf.split(0, 1, input, name='split')
+    assert len(input_per_step) == num_segments
+    fc7_per_step = []
     with tf.variable_scope("conv"):
-        fc8 = vgg16.inference(input, conv_keep_prob, train_conv123, train_conv45, train_fc67, False)
-        fc7 = tf.get_default_graph().get_tensor_by_name("conv/fc7/fc7:0")
-        fc6 = tf.get_default_graph().get_tensor_by_name("conv/fc6/fc6:0")
-        # output is [batch_size*num_segments, 4096]
+        for time_step in range(num_segments):
+            if time_step > 0: tf.get_variable_scope().reuse_variables()
+            fc8 = vgg16.inference(input_per_step[time_step], conv_keep_prob, train_conv123, train_conv45, train_fc67, False)
+            fc7 = tf.get_default_graph().get_tensor_by_name("conv/fc7/fc7:0")
+            fc6 = tf.get_default_graph().get_tensor_by_name("conv/fc6/fc6:0")
+            # output is [batch_size*num_segments, 4096]
+            fc7_dropout = dropout(fc7, lstm_keep_prob, name='dropout_fc7')
+            fc7_per_step.append(fc7_dropout)
+
     with tf.variable_scope("lstm"):
         hidden_size = 256
-        fc7_dropout = dropout(output, lstm_keep_prob, name='dropout_input_lstm')
-        lstm_inputs = tf.reshape(fc7_dropout, [batch_size, num_segments, 4096])
-
         stacked_lstm_cell_num = 1
         lstm_cells = []
         for i in range(stacked_lstm_cell_num):
@@ -29,7 +34,7 @@ def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_pro
         state = _initial_state
         for time_step in range(num_segments):
             if time_step > 0: tf.get_variable_scope().reuse_variables()
-            (cell_output, state) = cell(lstm_inputs[:, time_step, :], state)
+            (cell_output, state) = cell(fc7_per_step[time_step], state)
             outputs.append(cell_output)
         final_state = state
         lstm_params = [var for var in tf.all_variables() if var.name.startswith("lstm")]
