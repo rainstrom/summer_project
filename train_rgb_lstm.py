@@ -13,7 +13,7 @@ train_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/train_
 test_list = '/home/xiaoyang/action_recognition_exp/dataset_file_examples/val_split1_avi.txt'
 
 learning_rate = 0.01
-batch_size = 10 #
+batch_size = 25 #
 total_steps = 30000; decay_steps = 10000; decay_factor = 0.1
 momentum = 0.9
 num_segments = 25; num_length = 1
@@ -27,7 +27,7 @@ run_training = True
 run_full_test = True
 load_parameter_from_tfmodel = False
 
-batch_data = tf.placeholder(tf.float32, shape=[batch_size*num_segments, 224, 224, num_length*3], name="data")
+batch_data = tf.placeholder(tf.float32, shape=[num_segments, batch_size, 224, 224, num_length*3], name="data")
 batch_label = tf.placeholder(tf.int64, shape=[batch_size], name="label")
 lstm_keep_prob = tf.placeholder("float")
 global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -36,16 +36,17 @@ softmax_digits = vgg16_lstm.inference(batch_data, batch_size, num_segments, lstm
 cross_entropy_loss, total_loss = vgg16_lstm.loss(softmax_digits, batch_label, num_segments)
 accuracy = vgg16_lstm.accuracy(softmax_digits, batch_label, num_segments)
 
+# lr = learning_rate
 lr = tf.train.exponential_decay(learning_rate,
                               global_step,
                               decay_steps,
                               decay_factor,
                               staircase=False)
-optimizer = tf.train.MomentumOptimizer(lr, momentum)
+# optimizer = tf.train.MomentumOptimizer(lr, momentum)
+optimizer = tf.train.AdamOptimizer(lr)
 gvs = optimizer.compute_gradients(total_loss)
 capped_gvs = [(tf.clip_by_norm(grad, 3.0), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
-# train_op = optimizer.minimize(total_loss, global_step=global_step)
 
 saver = tf.train.Saver(tf.all_variables())
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -70,8 +71,8 @@ else:
     ckpt = tf.train.get_checkpoint_state("./weights_rgb_lstm/")
     assert (ckpt and ckpt.model_checkpoint_path)
     print("loading from cpkt: {}".format(ckpt.model_checkpoint_path))
-    # conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
-    # conv_saver.restore(sess, ckpt.model_checkpoint_path)
+    #conv_saver = tf.train.Saver({var.name[5:-2]:var for var in tf.get_collection("params") if var.name.startswith("conv")})
+    #conv_saver.restore(sess, ckpt.model_checkpoint_path)
     #saver1 = tf.train.Saver(tf.get_collection("params"))
     #saver1.restore(sess, ckpt.model_checkpoint_path)
     saver.restore(sess, ckpt.model_checkpoint_path)
@@ -116,8 +117,8 @@ def choose_from(lst):
 signal.signal(signal.SIGINT, signal_handler)
 
 if run_training:
-    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=3)
-    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=3)
+    data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=5)
+    test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=5)
 
     for i in range(start_step, total_steps):
         print("loading data")
