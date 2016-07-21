@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import threading
 import Queue
+from time import time
 
 RGB_MEAN = np.array([104, 117, 123], np.float32)
 FLOW_MEAN = np.array([128, 128], np.float32)
@@ -21,11 +22,13 @@ class Transformer:
 
     def transform(self, images):
         images = images.astype(np.float32)
-        h = images.shape[0]
-        w = images.shape[1]
 
         if self.is_test:
-            images = images[(h-crop_h)//2:(h-crop_h)//2+crop_h, (w-crop_w)//2:(w-crop_w)//2+crop_w, :]
+            h = images.shape[0]
+	    w = images.shape[1]
+            h_off = (h - self.crop_h) // 2
+            w_off = (w - self.crop_w) // 2
+            images = images[h_off:h_off+self.crop_h, w_off:w_off+self.crop_w, :]
             images -= self.mean_value
         else:
             # multi scale fix crop
@@ -41,8 +44,8 @@ class Transformer:
 
     def _multi_scale_fix_crop(self, images):
         scale_ratio = self.scale_ratios[random.randint(len(self.scale_ratios))]
-        croph = self.crop_h * scale_ratio
-        cropw = self.crop_w * scale_ratio
+        croph = int(self.crop_h * scale_ratio)
+        cropw = int(self.crop_w * scale_ratio)
         h = images.shape[0]
         w = images.shape[1]
         fix_crop_id = random.randint(5)
@@ -57,9 +60,9 @@ class Transformer:
             cropped_images = images[-croph:, -cropw:, :]
         else:
             cropped_images = images[(h-croph)//2:(h-croph)//2+croph, (w-cropw)//2:(w-cropw)//2+cropw, :]
-        if fix_crop_id != 0
-            images = cv2.resize(images, dsize=[self.crop_w, self.crop_h], interpolation = cv2.INTER_LINEAR)
-        return images
+        if scale_ratio != 1.:
+            cropped_images = cv2.resize(cropped_images, dsize=(self.crop_h, self.crop_w), interpolation = cv2.INTER_LINEAR)
+        return cropped_images
 
 class reader:
     def __init__(self,
@@ -86,7 +89,7 @@ class reader:
         assert frame_type == "RGB" or frame_type=="FLOW"
         self.frame_type = frame_type
         self.is_flow = (True if frame_type=="FLOW" else False)
-        self.img_channel = (2 if is_flow else 3)
+        self.img_channel = (2 if self.is_flow else 3)
 
         # batch_size, num_length, num_segments, is_test
         self.batch_size = batch_size
@@ -151,34 +154,37 @@ class reader:
         data[i*self.num_segments:(i+1)*self.num_segments, :, :, :] = video_block
         labels[i*self.num_segments:(i+1)*self.num_segments] = video_label
     def _seq_load(self):
-        data = np.zeros([self.num_segments, self.batch_size, 224, 224, self.num_length*img_channel], dtype=np.float32)
-        labels = np.zeros(self.batch_size, dtype=np.int64)
+        data, labels = self._load_batch()
+        data = data.reshape([self.batch_size, 224, 224, self.num_segments, self.num_length*self.img_channel])
+        data = np.transpose(data, [3, 0, 1, 2, 4])
+        return data, labels
 
-        video_block = video_block.reshape((224, 224, self.num_segments, self.num_length*img_channel))
-        # video_block is [num_segments, 224, 224, num_length*3/2]
-        video_block = np.transpose(video_block, (2, 0, 1, 3))
-        # data is [self.num_segments, self.batch_size, 224, 224, self.num_length*img_channel]
-        data[:, i, :, :, :] = video_block
-        labels[i] = video_label
-
-    def _load(self):
+    def _load_batch(self):
         data = np.zeros([self.batch_size, 224, 224, self.num_segments*self.num_length*self.img_channel], dtype=np.float32)
         labels = np.zeros(self.batch_size, dtype=np.int64)
         video_ids = self._get_video_id()
         for i, vid in enumerate(video_ids):
+            print "**** start loading batch", i
             video_item = self.video_list[vid]
             video_dir = video_item[0]
             video_length = video_item[1]
             video_label = video_item[2]
+            print "**** before into _read_video_segments"
             data[i, :, :, :] = self._read_video_segments(video_dir, video_length)
+            print "**** after into _read_video_segments"
+            print "------------------------------------------"
+            print
             labels[i] = video_label
         return data, labels
 
     def _read_video_segments(self, video_dir, video_length):
+        print "in _read_video_segments"
         video_dir = os.path.join(self.root_dir, video_dir)
-        frame_ids = _get_equal_length_segments_start_id(video_length)
+        frame_ids = self._get_equal_length_segments_start_id(video_length)
         # print("reading {}, {}".format(video_dir, frame_ids))
-        images = np.zeros([256, 341, self.num_segments*self.num_length*self.num_channel], dtype=np.float32)
+        images = np.zeros([256, 341, self.num_segments*self.num_length*self.img_channel], dtype=np.float32)
+        start_time = time()
+        print "start reading images", len(frame_ids)
         if not self.is_flow:
             for idx, frame_id in enumerate(frame_ids):
                 img = cv2.imread(os.path.join(video_dir, '%04d.jpg'%frame_id))
@@ -192,7 +198,12 @@ class reader:
                 assert isinstance(img_y, np.ndarray)
                 images[:, :, 2*idx] = img_x
                 images[:, :, 2*idx+1] = img_y
-        images = _transform(images, is_test, is_flow)
+        read_time = time()
+        print "start to do transformation"
+        images = self.transformer.transform(images)
+        trans_time = time()
+        print "over in read seg: ", read_time - start_time, trans_time - read_time
+
         return images
 
     def _get_equal_length_segments_start_id(self, duration):
@@ -200,10 +211,10 @@ class reader:
         frame_ids = []
         if self.is_test:
             for seg_id in range(self.num_segments):
-                seg_start_frame = int(avg_length * (seg_id + 0.5))
-                frame_ids += range(seg_start_id, seg_start_id+num_length)
+                seg_start_id = int(avg_length * (seg_id + 0.5))
+                frame_ids += range(seg_start_id, seg_start_id+self.num_length)
         else:
             for seg_id in range(self.num_segments):
-                seg_start_frame = int(avg_length * (seg_id + random.random()))
-                frame_ids += range(seg_start_id, seg_start_id+num_length)
+                seg_start_id = int(avg_length * (seg_id + random.random()))
+                frame_ids += range(seg_start_id, seg_start_id+self.num_length)
         return frame_ids

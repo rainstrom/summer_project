@@ -119,7 +119,6 @@ signal.signal(signal.SIGINT, signal_handler)
 if run_training:
     data_reader = ucf101.reader(root_dir, train_list, "RGB", batch_size, num_length, num_segments, False, "SEQ", queue_num=5)
     test_data_reader = ucf101.reader(root_dir, test_list, "RGB", batch_size, num_length, num_segments, True, "SEQ", queue_num=5)
-
     for i in range(start_step, total_steps):
         print("loading data")
         data, label = data_reader.get()

@@ -7,7 +7,6 @@ import layers
 def inference(input, batch_size, num_segments, lstm_keep_prob=0.5, conv_keep_prob=1.0, train_conv123=False, train_conv45=False, train_fc67=False):
     # input size is [num_segments, batch_size, 224, 224, num_length*3/2]
     fc6_per_step = []
-    import pdb; pdb.set_trace()
     with tf.variable_scope("conv"):
         for time_step in range(num_segments):
             if time_step > 0: tf.get_variable_scope().reuse_variables()
