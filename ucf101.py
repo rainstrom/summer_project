@@ -164,27 +164,27 @@ class reader:
         labels = np.zeros(self.batch_size, dtype=np.int64)
         video_ids = self._get_video_id()
         for i, vid in enumerate(video_ids):
-            print "**** start loading batch", i
+            # print "**** start loading batch", i
             video_item = self.video_list[vid]
             video_dir = video_item[0]
             video_length = video_item[1]
             video_label = video_item[2]
-            print "**** before into _read_video_segments"
+            # print "**** before into _read_video_segments"
             data[i, :, :, :] = self._read_video_segments(video_dir, video_length)
-            print "**** after into _read_video_segments"
-            print "------------------------------------------"
-            print
+            # print "**** after into _read_video_segments"
+            # print "------------------------------------------"
+            # print
             labels[i] = video_label
         return data, labels
 
     def _read_video_segments(self, video_dir, video_length):
-        print "in _read_video_segments"
+        # print "in _read_video_segments"
         video_dir = os.path.join(self.root_dir, video_dir)
         frame_ids = self._get_equal_length_segments_start_id(video_length)
         # print("reading {}, {}".format(video_dir, frame_ids))
         images = np.zeros([256, 341, self.num_segments*self.num_length*self.img_channel], dtype=np.float32)
         start_time = time()
-        print "start reading images", len(frame_ids)
+        # print "start reading images", len(frame_ids)
         if not self.is_flow:
             for idx, frame_id in enumerate(frame_ids):
                 img = cv2.imread(os.path.join(video_dir, '%04d.jpg'%frame_id))
@@ -199,10 +199,10 @@ class reader:
                 images[:, :, 2*idx] = img_x
                 images[:, :, 2*idx+1] = img_y
         read_time = time()
-        print "start to do transformation"
+        # print "start to do transformation"
         images = self.transformer.transform(images)
         trans_time = time()
-        print "over in read seg: ", read_time - start_time, trans_time - read_time
+        # print "over in read seg: ", read_time - start_time, trans_time - read_time
 
         return images
 
